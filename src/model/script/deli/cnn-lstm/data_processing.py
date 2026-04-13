@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-def load_and_interpolation(path):
+def load_and_interpolate(path):
     df = pd.read_csv(path)
     if 'created_at' in df.columns:
         df['created_at'] = pd.to_datetime(df['created_at'])

@@ -3,13 +3,13 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-def load_and_interpolation(path):
+def load_and_interpolate(path):
     df = pd.read_csv(path)
     if 'created_at' in df.columns:
         df['created_at'] = pd.to_datetime(df['created_at'])
         df = df.set_index('created_at')
         df.index = pd.to_datetime(df.index)
-        df = df.sort_index
+        df = df.sort_index()
     
     cols = ['temperature', 'humidity', 'pm25']
     if df[cols].isna().any().any():
