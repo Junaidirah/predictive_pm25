@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 from data_processing import load_and_interpolate, add_time_features, split_and_scale
 from window_generator import WindowGenerator
-from model import build_strong_lstm, R2Callback
+from model import build_lstm, R2Callback
 from evaluation import evaluate_detailed, plot_results
 
 def main():
@@ -10,7 +10,7 @@ def main():
     print("MENGJALANKAN PIPELINE PREDIKSI PM2.5 1 JAM KEDEPAN")
     print("="*60)
 
-    path = "D:\development\predictive_pm25\data\training\data_training_GKU.csv"
+    path = "D:/development/predictive_pm25/data/training/data_training_GKU.csv"
     if not os.path.exists(path):
         print(f"File {path} tidak ditemukan!")
         return
@@ -35,8 +35,8 @@ def main():
         label_columns=LABEL_COLS
     )
 
-    print("[3/5] Membangun model hibrida CNN-LSTM...")
-    model = build_strong_lstm(24, len(FEATURE_COLS))
+    print("[3/5] Membangun model LSTM...")
+    model = build_lstm(24, len(FEATURE_COLS))
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
         loss=tf.keras.losses.Huber(),

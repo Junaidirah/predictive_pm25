@@ -3,13 +3,13 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-def load_and_interpolation(path):
+def load_and_interpolate(path):
     df = pd.read_csv(path)
     if 'created_at' in df.columns:
         df['created_at'] = pd.to_datetime(df['created_at'])
         df = df.set_index('created_at')
         df.index = pd.to_datetime(df.index)
-        df = df.sort_index
+        df = df.sort_index()
     
     cols = ['temperature', 'humidity', 'pm25']
     if df[cols].isna().any().any():
@@ -19,7 +19,7 @@ def load_and_interpolation(path):
         df = df.interpolate(method='time')
         df = df.dropna(subset=['pm25'])
 
-    df = df.reset_index().rename(columns={'index'})
+    df = df.reset_index().rename(columns={'index': 'created_at'})
     return df
 
 def add_time_features(df):

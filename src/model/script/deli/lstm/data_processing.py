@@ -19,7 +19,7 @@ def load_and_interpolate(path):
         df = df.interpolate(method='time')
         df = df.dropna(subset=['pm25'])
 
-    df = df.reset_index().rename(columns={'index'})
+    df = df.reset_index().rename(columns={'index': 'created_at'})
     return df
 
 def add_time_features(df):

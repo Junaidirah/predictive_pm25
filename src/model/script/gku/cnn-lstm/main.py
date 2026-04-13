@@ -10,7 +10,7 @@ def main():
     print("MENGJALANKAN PIPELINE PREDIKSI PM2.5 1 JAM KEDEPAN")
     print("="*60)
 
-    path = "D:\development\predictive_pm25\data\training\data_training_GKU.csv"
+    path = "D:/development/predictive_pm25/data/training/data_training_GKU.csv"
     if not os.path.exists(path):
         print(f"File {path} tidak ditemukan!")
         return
