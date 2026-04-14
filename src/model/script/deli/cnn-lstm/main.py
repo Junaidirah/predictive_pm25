@@ -7,7 +7,15 @@ from evaluation import evaluate_detailed, plot_results
 
 def main():
     print("="*60)
-    print("MENGJALANKAN PIPELINE PREDIKSI PM2.5 1 JAM KEDEPAN")
+    print("MENGJALANKAN PIPELINE PREDIKSI PM2.5 (HIBRIDA CNN-LSTM)")
+    print("="*60)
+    print("KONFIGURASI EKSPERIMEN DELI (HIBRIDA CNN-LSTM)")
+    print("> Lokasi Data   : Deli")
+    print("> Horizon       : 1 Jam Ke Depan")
+    print("> Input Width   : 24 Jam")
+    print("> Label Width   : 1 Jam")
+    print("> Model         : CNN-LSTM")
+    print("> Max Epochs    : 100")
     print("="*60)
 
     path = "D:/development/predictive_pm25/data/training/data_training_deli.csv"
@@ -37,8 +45,9 @@ def main():
 
     print("[3/5] Membangun model hibrida CNN-LSTM...")
     model = build_strong_lstm(24, len(FEATURE_COLS))
+    # Compile Model (Init LR: 1e-4, Decay ditangani oleh ReduceLROnPlateau)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
         loss=tf.keras.losses.Huber(),
         metrics=['mae']
     )
@@ -48,7 +57,7 @@ def main():
     history = model.fit(
         multi_window.train,
         validation_data=multi_window.val,
-        epochs=30, # Bisa dinaikkan ke 100 nanti
+        epochs=100, # Dinaikkan agar model bisa belajar lebih lama
         callbacks=[
             R2Callback(multi_window.val),
             tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True, verbose=1),
@@ -57,8 +66,8 @@ def main():
     )
 
     print("[5/5] Evaluasi Model...")
-    preds, labels, r2, mae_real = evaluate_detailed(model, multi_window, scaler)
-    plot_results(labels, preds, r2)
+    preds, labels, r2, metrics = evaluate_detailed(model, multi_window, scaler)
+    plot_results(labels, preds, r2, history=history, metrics=metrics)
     
     model.save('pm25_model_1hour.keras')
     print("Selesai! Model tersimpan di 'pm25_model_1hour.keras'")

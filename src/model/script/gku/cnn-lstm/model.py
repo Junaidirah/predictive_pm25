@@ -2,18 +2,27 @@ import tensorflow as tf
 import numpy as np
 
 def build_strong_lstm(input_width, n_features):
+    """Model Hibrida CNN-LSTM"""
     inputs = tf.keras.layers.Input(shape=(input_width, n_features))
     
     # CNN Layer
     x = tf.keras.layers.Conv1D(filters=64, kernel_size=3, activation='relu')(inputs)
     x = tf.keras.layers.MaxPooling1D(pool_size=2)(x)
     
-    # LSTM Layer
-    x = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, return_sequences=False))(x)
-    x = tf.keras.layers.Dropout(0.2)(x)
+    # LSTM Layer: Kurangi units jadi 32, tambah L2 regularization
+    x = tf.keras.layers.Bidirectional(
+        tf.keras.layers.LSTM(
+            32, 
+            return_sequences=False,
+            kernel_regularizer=tf.keras.regularizers.l2(0.002),
+            recurrent_regularizer=tf.keras.regularizers.l2(0.002)
+        )
+    )(x)
+    x = tf.keras.layers.Dropout(0.5)(x)
     
-    # Dense Layer
-    x = tf.keras.layers.Dense(32, activation='relu')(x)
+    # Dense Layer: Kurangi units jadi 16, tambah L2 & Dropout ekstra
+    x = tf.keras.layers.Dense(16, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.002))(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
     
     # Output Layer
     outputs = tf.keras.layers.Dense(1)(x)
