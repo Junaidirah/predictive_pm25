@@ -1,9 +1,12 @@
 import tensorflow as tf
 import os
-from data_processing import load_and_interpolate, add_time_features, split_and_scale
+from data_processing import load_and_interpolate, add_time_features, normalize, split_data
 from window_generator import WindowGenerator
 from model import build_lstm, R2Callback
-from evaluation import evaluate_detailed, plot_results
+from evaluation import evaluate_detailed
+from analyze_distribution import print_stats
+from dashboard import plot_master_dashboard
+from config import FEATURE_COLS, LABEL_COLS
 
 def main():
     print("="*60)
@@ -15,7 +18,7 @@ def main():
     print("> Input Width   : 24 Jam")
     print("> Label Width   : 1 Jam")
     print("> Model         : Bi-Directional LSTM")
-    print("> Max Epochs    : 100")
+    print("> Max Epochs    : 150")
     print("="*60)
 
     path = "D:/development/predictive_pm25/data/training/data_training_GKU.csv"
@@ -26,12 +29,13 @@ def main():
     print("[1/5] Memuat dan memproses data...")
     df = load_and_interpolate(path)
     df_f = add_time_features(df)
-    train_scaled, val_scaled, test_scaled, scaler = split_and_scale(df_f)
 
-    FEATURE_COLS = ['pm25', 'temperature', 'humidity', 'pm25_diff', 'Day sin', 'Day cos', 'Year sin', 'Year cos']
-    LABEL_COLS = ['pm25']
+    print("\n[2/5] Normalisasi seluruh dataset (RobustScaler + Clip)...")
+    df_ready, scaler = normalize(df_f)
 
-    print("[2/5] Menyiapkan WindowGenerator...")
+    print("\n[3/5] Split data yang sudah dinormalisasi...")
+    train_scaled, val_scaled, test_scaled = split_data(df_ready)
+
     multi_window = WindowGenerator(
         input_width=24,
         label_width=1,
@@ -43,7 +47,7 @@ def main():
         label_columns=LABEL_COLS
     )
 
-    print("[3/5] Membangun model LSTM...")
+    print("\n[4/5] Membangun & melatih model LSTM...")
     model = build_lstm(24, len(FEATURE_COLS))
     # Compile Model (Init LR: 1e-4, Decay ditangani oleh ReduceLROnPlateau)
     model.compile(
@@ -53,22 +57,51 @@ def main():
     )
     model.summary()
 
-    print("[4/5] Melatih model...")
     history = model.fit(
         multi_window.train,
         validation_data=multi_window.val,
-        epochs=100, # Dinaikkan agar model bisa belajar lebih lama
+        epochs=100,
         callbacks=[
             R2Callback(multi_window.val),
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True, verbose=1),
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=25, restore_best_weights=True, verbose=1),
             tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1)
         ]
     )
 
-    print("[5/5] Evaluasi Model...")
+    print("\n" + "="*55)
+    print("[STATIC EVAL] Evaluasi tanpa Dropout (bobot terkunci)")
+    train_loss, train_mae = model.evaluate(multi_window.train, verbose=0)
+    val_loss,   val_mae   = model.evaluate(multi_window.val,   verbose=0)
+    print(f"  Train Loss : {train_loss:.4f}  |  Train MAE : {train_mae:.4f}")
+    print(f"  Val Loss   : {val_loss:.4f}  |  Val MAE   : {val_mae:.4f}")
+    ratio = val_loss / train_loss
+    print(f"  Rasio Val/Train : {ratio:.3f}")
+    if ratio < 0.90:
+        print("  >> Val jauh lebih rendah: distribusi val lebih mudah dari train.")
+    elif ratio > 1.25:
+        print("  >> OVERFITTING: Val loss jauh lebih tinggi dari train.")
+    else:
+        print("  >> Sehat: perbedaan train/val dalam batas wajar.")
+    print("="*55)
+
+    print("[5/5] Evaluasi & Render Master Dashboard...")
     preds, labels, r2, metrics = evaluate_detailed(model, multi_window, scaler)
-    plot_results(labels, preds, r2, history=history, metrics=metrics)
-    
+
+    print("\n[INFO] Statistik distribusi per split setelah normalisasi:")
+    print_stats(train_scaled, val_scaled, test_scaled)
+
+    plot_master_dashboard(
+        train_df=train_scaled,
+        val_df=val_scaled,
+        test_df=test_scaled,
+        labels=labels,
+        preds=preds,
+        r2=r2,
+        metrics=metrics,
+        history=history,
+        save_path='dashboard_master_gku_lstm.png'
+    )
+
     model.save('pm25_model_1hour.keras')
     print("Selesai! Model tersimpan di 'pm25_model_1hour.keras'")
 

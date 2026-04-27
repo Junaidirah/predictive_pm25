@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+from config import SCALED_COLS
 
 def evaluate_detailed(model, window_gen, scaler):
     all_preds, all_labels = [], []
@@ -20,11 +21,13 @@ def evaluate_detailed(model, window_gen, scaler):
     ss_tot = np.sum((labels - np.mean(labels))**2)
     r2 = 1 - (ss_res / ss_tot)
 
-    pm25_std = scaler.scale_[2]
-    pm25_mean = scaler.mean_[2]
+    pm25_idx    = SCALED_COLS.index('pm25')
+    pm25_scale  = scaler.scale_[pm25_idx]   # IQR (RobustScaler)
+    pm25_center = scaler.center_[pm25_idx]  # median (RobustScaler)
 
-    preds_real = (preds * pm25_std) + pm25_mean
-    labels_real = (labels * pm25_std) + pm25_mean
+    # Inverse transform RobustScaler murni (tanpa log1p karena sudah dihapus)
+    preds_real  = (preds  * pm25_scale) + pm25_center
+    labels_real = (labels * pm25_scale) + pm25_center
 
     mae_real = np.mean(np.abs(preds_real - labels_real))
     rmse_real = np.sqrt(np.mean((preds_real - labels_real)**2))
