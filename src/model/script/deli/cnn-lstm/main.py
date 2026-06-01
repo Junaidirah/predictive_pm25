@@ -72,5 +72,13 @@ def main():
     model.save('pm25_model_1hour.keras')
     print("Selesai! Model tersimpan di 'pm25_model_1hour.keras'")
 
+    print("\n[6/5] Menjalankan prediksi dan sistem EWS otomatis...")
+    try:
+        from forecast import generate_forecast
+        generate_forecast()
+    except Exception as e:
+        print(f"⚠️ Peringatan: Gagal memicu modul EWS otomatis: {e}")
+
+
 if __name__ == '__main__':
     main()
